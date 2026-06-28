@@ -1,0 +1,19 @@
+{
+  "firestore": {
+    "rules": "firestore.rules"
+    
+  },
+  "flutter": {
+    "platforms": {
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "chefsync-d6e6f",
+          "configurations": {
+            "android": "1:780139787453:android:ceac34a9b8d77c90fef3d4",
+            "web": "1:780139787453:web:b55496043694046efef3d4"
+          }
+        }
+      }
+    }
+  }
+}

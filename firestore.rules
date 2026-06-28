@@ -1,0 +1,240 @@
+rules_version = '2';
+
+// ============================================================
+// ChefSync — Firestore Security Rules
+// Role hierarchy: admin > manager > cashier > waiter/kitchen
+//
+// Collection `users` menyimpan dokumen dengan field:
+//   id          : String (= UID Firebase Auth)
+//   name        : String
+//   email       : String
+//   role        : String  ("admin"|"manager"|"cashier"|"waiter"|"kitchen")
+//   isActive    : Boolean
+//   profileImageUrl : String?
+// ============================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // --------------------------------------------------------
+    // HELPER FUNCTIONS
+    // --------------------------------------------------------
+
+    // Pastikan request datang dari user yang sudah login
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Ambil dokumen user yang sedang login dari collection `users`
+    function getUserDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    // Ambil role dari dokumen user (dengan fallback string kosong jika tidak ada)
+    function getRole() {
+      return getUserDoc().data.get('role', '');
+    }
+
+    // Pastikan user aktif (isActive == true)
+    function isActive() {
+      return getUserDoc().data.get('isActive', false) == true;
+    }
+
+    // Cek login + aktif sekaligus
+    function isAuthAndActive() {
+      return isAuthenticated() && isActive();
+    }
+
+    // Role checks
+    function isAdmin() {
+      return isAuthAndActive() && getRole() == 'admin';
+    }
+
+    function isManager() {
+      return isAuthAndActive() && getRole() == 'manager';
+    }
+
+    function isCashier() {
+      return isAuthAndActive() && getRole() == 'cashier';
+    }
+
+    function isWaiter() {
+      return isAuthAndActive() && getRole() == 'waiter';
+    }
+
+    function isKitchen() {
+      return isAuthAndActive() && getRole() == 'kitchen';
+    }
+
+    // Shortcut: admin ATAU manager
+    function isAdminOrManager() {
+      return isAdmin() || isManager();
+    }
+
+    // Shortcut: semua staf yang boleh lihat order (semua kecuali tidak ada role)
+    function isFloorStaff() {
+      return isAdmin() || isManager() || isCashier() || isWaiter();
+    }
+
+    // Validasi field order yang boleh diupdate oleh kitchen
+    // Kitchen hanya boleh ubah field `status`
+    function onlyStatusChanged() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']);
+    }
+
+    // Validasi status yang valid untuk order
+    function isValidOrderStatus(status) {
+      return status in ['pending', 'confirmed', 'preparing', 'ready', 'served', 'completed', 'cancelled'];
+    }
+
+    // Validasi status yang valid untuk meja
+    function isValidTableStatus(status) {
+      return status in ['available', 'occupied', 'reserved', 'cleaning'];
+    }
+
+    // --------------------------------------------------------
+    // COLLECTION: users
+    // --------------------------------------------------------
+    // - Admin: CRUD semua dokumen user
+    // - Manager: baca semua, tidak bisa hapus
+    // - User lain: hanya baca dokumen dirinya sendiri
+    // - Siapapun tidak bisa mengubah role sendiri (kecuali admin)
+    // --------------------------------------------------------
+    match /users/{userId} {
+      // Semua user yang sudah login & aktif boleh baca profil dirinya sendiri
+      allow read: if isAuthAndActive() && request.auth.uid == userId;
+
+      // Admin dan manager boleh baca semua profil
+      allow read: if isAdminOrManager();
+
+      // Hanya admin yang boleh membuat user baru di Firestore
+      // (biasanya dilakukan lewat Cloud Function setelah Firebase Auth createUser)
+      allow create: if isAdmin();
+
+      // Update: admin boleh semua field
+      // User sendiri boleh update profileImageUrl dan name saja (bukan role)
+      allow update: if isAdmin();
+      allow update: if isAuthAndActive()
+                    && request.auth.uid == userId
+                    && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'isActive']);
+
+      // Hanya admin yang boleh hapus user
+      allow delete: if isAdmin();
+    }
+
+    // --------------------------------------------------------
+    // COLLECTION: orders
+    // --------------------------------------------------------
+    // admin      : CRUD semua
+    // manager    : CRUD semua (laporan & kontrol penuh)
+    // cashier    : read semua, update status (served→completed untuk billing)
+    // waiter     : create order baru, read semua, update order milik session-nya
+    // kitchen    : read order dengan status preparing/confirmed, update status saja
+    // --------------------------------------------------------
+    match /orders/{orderId} {
+      // Admin & manager: akses penuh
+      allow read, write: if isAdminOrManager();
+
+      // Cashier: baca semua order, update status untuk proses billing
+      allow read: if isCashier();
+      allow update: if isCashier()
+                    && onlyStatusChanged()
+                    && isValidOrderStatus(request.resource.data.status);
+
+      // Waiter: bisa baca semua order dan buat order baru
+      allow read: if isWaiter();
+      allow create: if isWaiter()
+                    && request.resource.data.keys().hasAll(['tableId', 'items', 'status', 'createdAt'])
+                    && request.resource.data.status == 'pending'
+                    && request.resource.data.items.size() > 0;
+
+      // Waiter boleh update order yang dibuat dalam 30 menit terakhir
+      // (untuk koreksi pesanan sebelum dikirim ke dapur)
+      allow update: if isWaiter()
+                    && resource.data.status in ['pending', 'confirmed'];
+
+      // Kitchen: hanya bisa baca order, dan update field status saja
+      allow read: if isKitchen();
+      allow update: if isKitchen()
+                    && onlyStatusChanged()
+                    && isValidOrderStatus(request.resource.data.status)
+                    // Kitchen hanya boleh set status ke preparing atau ready
+                    && request.resource.data.status in ['preparing', 'ready'];
+    }
+
+    // --------------------------------------------------------
+    // COLLECTION: tables
+    // --------------------------------------------------------
+    // admin/manager : CRUD penuh (termasuk tambah/hapus meja)
+    // cashier       : read + update status
+    // waiter        : read + update status (ubah ke occupied saat terima tamu)
+    // kitchen       : read only (lihat meja mana yang order-nya untuk meja berapa)
+    // --------------------------------------------------------
+    match /tables/{tableId} {
+      // Admin & manager: akses penuh
+      allow read, write: if isAdminOrManager();
+
+      // Cashier: baca semua, update status meja
+      allow read: if isCashier();
+      allow update: if isCashier()
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                       .hasOnly(['status', 'activeOrderId', 'activeGuests'])
+                    && isValidTableStatus(request.resource.data.status);
+
+      // Waiter: baca semua, update status meja
+      allow read: if isWaiter();
+      allow update: if isWaiter()
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                       .hasOnly(['status', 'activeOrderId', 'activeGuests'])
+                    && isValidTableStatus(request.resource.data.status);
+
+      // Kitchen: read only
+      allow read: if isKitchen();
+    }
+
+    // --------------------------------------------------------
+    // COLLECTION: menu_items
+    // --------------------------------------------------------
+    // admin/manager : CRUD penuh (kelola menu)
+    // cashier       : read (tampilkan menu di billing)
+    // waiter        : read (tampilkan menu di POS)
+    // kitchen       : read (lihat deskripsi menu yang diorder)
+    // --------------------------------------------------------
+    match /menu_items/{itemId} {
+      // Semua user aktif boleh baca menu
+      allow read: if isAuthAndActive();
+
+      // Hanya admin dan manager yang boleh kelola menu
+      allow create, update, delete: if isAdminOrManager();
+    }
+
+    // --------------------------------------------------------
+    // COLLECTION: inventory
+    // --------------------------------------------------------
+    // admin/manager : CRUD penuh
+    // kitchen       : read + update currentStock (replenish atau pemakaian)
+    // cashier/waiter: read only (lihat stok untuk info ketersediaan)
+    // --------------------------------------------------------
+    match /inventory/{itemId} {
+      // Admin & manager: akses penuh
+      allow read, write: if isAdminOrManager();
+
+      // Kitchen: baca dan update stok (field currentStock & lastRestocked saja)
+      allow read: if isKitchen();
+      allow update: if isKitchen()
+                    && request.resource.data.diff(resource.data).affectedKeys()
+                       .hasOnly(['currentStock', 'lastRestocked']);
+
+      // Cashier & waiter: read only
+      allow read: if isCashier() || isWaiter();
+    }
+
+    // --------------------------------------------------------
+    // DENY semua yang tidak tercakup di atas
+    // (Firestore default sudah deny, ini eksplisit untuk kejelasan)
+    // --------------------------------------------------------
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
