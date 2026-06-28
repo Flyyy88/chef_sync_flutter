@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../features/dashboard/presentations/dashboard_screen.dart';
 import '../../features/menu/presentation/add_menu_screen.dart';
+import '../../features/orders/presentation/pos_screen.dart';
 import '../../features/authentication/presentation/login_screen.dart';
 import '../../features/authentication/presentation/auth_providers.dart';
 import '../../features/authentication/domain/models/user_model.dart';
@@ -109,9 +110,7 @@ final appRouterPrvdr = Provider<GoRouter>((ref) {
           StatefulShellBranch(routes: [
             GoRoute(
               path: '/orders',
-              builder: (context, state) => const Scaffold(
-                body: Center(child: Text('Orders / POS Screen')),
-              ),
+              builder: (context, state) => const PosScreen(),
             ),
           ]),
           StatefulShellBranch(routes: [
