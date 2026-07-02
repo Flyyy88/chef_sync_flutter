@@ -177,9 +177,13 @@ service cloud.firestore {
       // Cashier: baca semua, update status meja
       allow read: if isCashier();
       allow update: if isCashier()
-                    && request.resource.data.diff(resource.data).affectedKeys()
-                       .hasOnly(['status', 'activeOrderId', 'activeGuests'])
-                    && isValidTableStatus(request.resource.data.status);
+  && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+      'status',
+      'paymentMethod',
+      'paidAt',
+      'invoiceNumber'
+  ])
+  && isValidOrderStatus(request.resource.data.status);
 
       // Waiter: baca semua, update status meja
       allow read: if isWaiter();
@@ -233,8 +237,22 @@ service cloud.firestore {
     // DENY semua yang tidak tercakup di atas
     // (Firestore default sudah deny, ini eksplisit untuk kejelasan)
     // --------------------------------------------------------
+    match /system/{docId} {
+  allow read, write: if isAdminOrManager();
+}
     match /{document=**} {
       allow read, write: if false;
     }
   }
+// --------------------------------------------------------
+// COLLECTION: system
+// Digunakan untuk invoice counter
+// --------------------------------------------------------
+match /system/{docId} {
+
+  allow read: if isCashier() || isAdminOrManager();
+
+  allow write: if isCashier() || isAdminOrManager();
+
+}
 }

@@ -11,6 +11,14 @@ enum OrderStatus {
   cancelled
 }
 
+enum PaymentMethod {
+  cash,
+  qris,
+  debitCard,
+  creditCard,
+  eWallet,
+}
+
 class OrderItem {
   final MenuItem item;
   final int quantity;
@@ -49,6 +57,9 @@ class OrderModel {
   final double serviceCharge;
   final String? generalNotes;
   final DateTime createdAt;
+  final String? invoiceNumber;
+  final PaymentMethod? paymentMethod;
+  final DateTime? paidAt;
 
   OrderModel({
     required this.id,
@@ -59,6 +70,9 @@ class OrderModel {
     this.serviceCharge = 0.05, // 5% Service Charge
     this.generalNotes,
     required this.createdAt,
+    this.invoiceNumber,
+    this.paymentMethod,
+    this.paidAt,
   });
 
   double get subtotal => items.fold(0.0, (val, e) => val + e.totalPrice);
@@ -67,7 +81,8 @@ class OrderModel {
   double get grandTotal => subtotal + calculatedTax + calculatedServiceCharge;
 
   // Untuk tampilan ringkas di Dashboard, contoh: "2x Ribeye Steak, 1x Merlot"
-  String get itemsSummary => items.map((e) => '${e.quantity}x ${e.item.name}').join(', ');
+  String get itemsSummary =>
+      items.map((e) => '${e.quantity}x ${e.item.name}').join(', ');
 
   Map<String, dynamic> toJson() => {
         'tableId': tableId,
@@ -77,6 +92,9 @@ class OrderModel {
         'serviceCharge': serviceCharge,
         'generalNotes': generalNotes,
         'createdAt': Timestamp.fromDate(createdAt),
+        'invoiceNumber': invoiceNumber,
+        'paymentMethod': paymentMethod?.name,
+        'paidAt': paidAt == null ? null : Timestamp.fromDate(paidAt!),
       };
 
   factory OrderModel.fromJson(Map<String, dynamic> json, String id) {
@@ -94,6 +112,13 @@ class OrderModel {
       serviceCharge: (json['serviceCharge'] ?? 0.05).toDouble(),
       generalNotes: json['generalNotes'],
       createdAt: (json['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      invoiceNumber: json['invoiceNumber'],
+      paymentMethod: json['paymentMethod'] == null
+          ? null
+          : PaymentMethod.values.firstWhere(
+              (e) => e.name == json['paymentMethod'],
+            ),
+      paidAt: (json['paidAt'] as Timestamp?)?.toDate(),
     );
   }
 
@@ -101,6 +126,9 @@ class OrderModel {
     OrderStatus? status,
     List<OrderItem>? items,
     String? generalNotes,
+    String? invoiceNumber,
+    PaymentMethod? paymentMethod,
+    DateTime? paidAt,
   }) {
     return OrderModel(
       id: id,
@@ -111,6 +139,9 @@ class OrderModel {
       serviceCharge: serviceCharge,
       generalNotes: generalNotes ?? this.generalNotes,
       createdAt: createdAt,
+      invoiceNumber: invoiceNumber ?? this.invoiceNumber,
+      paymentMethod: paymentMethod ?? this.paymentMethod,
+      paidAt: paidAt ?? this.paidAt,
     );
   }
 }

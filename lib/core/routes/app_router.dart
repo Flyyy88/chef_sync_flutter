@@ -8,6 +8,13 @@ import '../../features/authentication/presentation/login_screen.dart';
 import '../../features/authentication/presentation/auth_providers.dart';
 import '../../features/authentication/domain/models/user_model.dart';
 import '../widgets/main_shell.dart';
+import '../../features/kitchen/presentation/kitchen_screen.dart';
+import '../../features/waiter/presentation/waiter_screen.dart';
+import '../../features/cashier/presentation/cashier_screen.dart';
+import '../../features/receipt/presentation/receipt_screen.dart';
+import '../../features/orders/domain/models/order_model.dart';
+import '../../features/tables/presentation/table_screen.dart';
+import '../../features/tables/domain/models/table_model.dart';
 
 // ============================================================
 // Rute yang diizinkan per role
@@ -15,18 +22,40 @@ import '../widgets/main_shell.dart';
 // halaman yang bukan haknya.
 // ============================================================
 const _roleHomeRoute = {
-  UserRole.admin:   '/dashboard',
+  UserRole.admin: '/dashboard',
   UserRole.manager: '/dashboard',
-  UserRole.cashier: '/orders',
-  UserRole.waiter:  '/orders',
+  UserRole.cashier: '/cashier',
+  UserRole.waiter: '/waiter',
   UserRole.kitchen: '/kitchen',
 };
 
 const _allowedRoutes = {
-  UserRole.admin:   {'/dashboard', '/orders', '/tables', '/inventory', '/menu', '/add-menu', '/kitchen'},
-  UserRole.manager: {'/dashboard', '/orders', '/tables', '/inventory', '/menu', '/add-menu', '/kitchen'},
-  UserRole.cashier: {'/dashboard', '/orders', '/tables'},
-  UserRole.waiter:  {'/orders', '/tables'},
+  UserRole.admin: {
+    '/dashboard',
+    '/orders',
+    '/tables',
+    '/inventory',
+    '/menu',
+    '/add-menu',
+    '/kitchen',
+    '/waiter',
+    '/cashier',
+    '/receipt'
+  },
+  UserRole.manager: {
+    '/dashboard',
+    '/orders',
+    '/tables',
+    '/inventory',
+    '/menu',
+    '/add-menu',
+    '/kitchen',
+    '/waiter',
+    '/cashier',
+    '/receipt'
+  },
+  UserRole.cashier: {'/dashboard', '/cashier', '/tables', '/receipt'},
+  UserRole.waiter: {'/orders', '/tables', '/waiter'},
   UserRole.kitchen: {'/kitchen'},
 };
 
@@ -49,8 +78,11 @@ final appRouterPrvdr = Provider<GoRouter>((ref) {
     ),
     redirect: (context, state) {
       final authState = ref.read(currentUserPrvdr);
-      final location = state.uri.toString();
+      final location = state.uri.path;
       final isGoingToLogin = location == '/login';
+      debugPrint("");
+      debugPrint("========== ROUTER ==========");
+      debugPrint("PATH : ${state.uri.path}");
 
       // Saat stream masih loading (app baru buka), jangan redirect dulu
       if (authState.isLoading) return null;
@@ -69,6 +101,8 @@ final appRouterPrvdr = Provider<GoRouter>((ref) {
 
       // Cek apakah role punya akses ke halaman yang dituju
       final allowed = _allowedRoutes[user.role] ?? {};
+      debugPrint("ROLE : ${user.role}");
+      debugPrint("ALLOWED : ${allowed.contains(state.uri.path)}");
       if (!allowed.contains(location)) {
         return _roleHomeRoute[user.role] ?? '/dashboard';
       }
@@ -89,9 +123,25 @@ final appRouterPrvdr = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/kitchen',
-        builder: (context, state) => const Scaffold(
-          body: Center(child: Text('Kitchen Display Screen')),
-        ),
+        builder: (context, state) => const KitchenScreen(),
+      ),
+      GoRoute(
+        path: '/waiter',
+        builder: (context, state) => const WaiterScreen(),
+      ),
+      GoRoute(
+        path: '/cashier',
+        builder: (context, state) => const CashierScreen(),
+      ),
+      GoRoute(
+        path: '/receipt',
+        builder: (context, state) {
+          final order = state.extra as OrderModel;
+
+          return ReceiptScreen(
+            order: order,
+          );
+        },
       ),
 
       // -------------------------------------------------------
@@ -110,15 +160,19 @@ final appRouterPrvdr = Provider<GoRouter>((ref) {
           StatefulShellBranch(routes: [
             GoRoute(
               path: '/orders',
-              builder: (context, state) => const PosScreen(),
+              builder: (context, state) {
+                final table = state.extra as TableModel?;
+
+                return PosScreen(
+                  selectedTable: table,
+                );
+              },
             ),
           ]),
           StatefulShellBranch(routes: [
             GoRoute(
               path: '/tables',
-              builder: (context, state) => const Scaffold(
-                body: Center(child: Text('Tables Screen')),
-              ),
+              builder: (context, state) => const TableScreen(),
             ),
           ]),
           StatefulShellBranch(routes: [

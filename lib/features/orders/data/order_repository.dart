@@ -1,11 +1,20 @@
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../domain/models/order_model.dart';
+import 'package:flutter/foundation.dart';
 
 abstract class OrderRepository {
   Future<List<OrderModel>> fetchOrders();
   Future<List<OrderModel>> fetchTodayOrders();
+  Stream<List<OrderModel>> watchOrders();
+
+  Stream<List<OrderModel>> watchTodayOrders();
   Future<void> saveOrder(OrderModel order);
   Future<void> updateOrderStatus(String orderId, OrderStatus status);
+  Future<void> completeOrder(
+    OrderModel order, {
+    required PaymentMethod paymentMethod,
+  });
 }
 
 // ==========================================
@@ -13,6 +22,26 @@ abstract class OrderRepository {
 // ==========================================
 class MockOrderRepositoryImpl implements OrderRepository {
   final List<OrderModel> _orders = [];
+  final _controller = StreamController<List<OrderModel>>.broadcast();
+
+  @override
+  Stream<List<OrderModel>> watchOrders() {
+    _controller.add(List.from(_orders));
+    return _controller.stream;
+  }
+
+  @override
+  Stream<List<OrderModel>> watchTodayOrders() {
+    return watchOrders().map((orders) {
+      final now = DateTime.now();
+
+      return orders.where((o) {
+        return o.createdAt.year == now.year &&
+            o.createdAt.month == now.month &&
+            o.createdAt.day == now.day;
+      }).toList();
+    });
+  }
 
   @override
   Future<List<OrderModel>> fetchOrders() async => List.from(_orders);
@@ -35,14 +64,41 @@ class MockOrderRepositoryImpl implements OrderRepository {
       _orders[idx] = order;
     } else {
       _orders.add(order);
+      _controller.add(List.from(_orders));
     }
   }
 
   @override
-  Future<void> updateOrderStatus(String orderId, OrderStatus status) async {
+  Future<void> updateOrderStatus(
+    String orderId,
+    OrderStatus status,
+  ) async {
     final idx = _orders.indexWhere((e) => e.id == orderId);
+
     if (idx != -1) {
       _orders[idx] = _orders[idx].copyWith(status: status);
+
+      _controller.add(List.from(_orders));
+    }
+  }
+
+  @override
+  Future<void> completeOrder(
+    OrderModel order, {
+    required PaymentMethod paymentMethod,
+  }) async {
+    final updated = order.copyWith(
+      status: OrderStatus.completed,
+      paymentMethod: paymentMethod,
+      paidAt: DateTime.now(),
+      invoiceNumber: "INV-${DateTime.now().millisecondsSinceEpoch}",
+    );
+
+    final idx = _orders.indexWhere((e) => e.id == order.id);
+
+    if (idx != -1) {
+      _orders[idx] = updated;
+      _controller.add(List.from(_orders));
     }
   }
 }
@@ -53,6 +109,55 @@ class MockOrderRepositoryImpl implements OrderRepository {
 class FirestoreOrderRepositoryImpl implements OrderRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final String collectionName = 'orders';
+
+  @override
+  Stream<List<OrderModel>> watchOrders() {
+    return _firestore
+        .collection(collectionName)
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => OrderModel.fromJson(doc.data(), doc.id))
+              .toList(),
+        );
+  }
+
+  @override
+  Stream<List<OrderModel>> watchTodayOrders() {
+    final now = DateTime.now();
+
+    final startOfDay = DateTime(
+      now.year,
+      now.month,
+      now.day,
+    );
+
+    final endOfDay = startOfDay.add(
+      const Duration(days: 1),
+    );
+
+    return _firestore
+        .collection(collectionName)
+        .where(
+          'createdAt',
+          isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay),
+        )
+        .where(
+          'createdAt',
+          isLessThan: Timestamp.fromDate(endOfDay),
+        )
+        .orderBy(
+          'createdAt',
+          descending: true,
+        )
+        .snapshots()
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => OrderModel.fromJson(doc.data(), doc.id))
+              .toList(),
+        );
+  }
 
   @override
   Future<List<OrderModel>> fetchOrders() async {
@@ -73,12 +178,33 @@ class FirestoreOrderRepositoryImpl implements OrderRepository {
   Future<List<OrderModel>> fetchTodayOrders() async {
     try {
       final now = DateTime.now();
-      final startOfDay = DateTime(now.year, now.month, now.day);
+
+      final startOfDay = DateTime(
+        now.year,
+        now.month,
+        now.day,
+      );
+
+      final endOfDay = startOfDay.add(
+        const Duration(days: 1),
+      );
+
       final snapshot = await _firestore
           .collection(collectionName)
-          .where('createdAt', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay))
-          .orderBy('createdAt', descending: true)
+          .where(
+            'createdAt',
+            isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay),
+          )
+          .where(
+            'createdAt',
+            isLessThan: Timestamp.fromDate(endOfDay),
+          )
+          .orderBy(
+            'createdAt',
+            descending: true,
+          )
           .get();
+
       return snapshot.docs
           .map((doc) => OrderModel.fromJson(doc.data(), doc.id))
           .toList();
@@ -90,9 +216,17 @@ class FirestoreOrderRepositoryImpl implements OrderRepository {
   @override
   Future<void> saveOrder(OrderModel order) async {
     try {
-      await _firestore.collection(collectionName).doc(order.id).set(order.toJson());
-    } catch (e) {
-      throw Exception("Gagal menyimpan order: $e");
+      await _firestore
+          .collection(collectionName)
+          .doc(order.id)
+          .set(order.toJson());
+    } catch (e, s) {
+      if (kDebugMode) {
+        debugPrint("SAVE ORDER ERROR");
+        debugPrint(e.toString());
+        debugPrintStack(stackTrace: s);
+      }
+      rethrow;
     }
   }
 
@@ -106,5 +240,77 @@ class FirestoreOrderRepositoryImpl implements OrderRepository {
     } catch (e) {
       throw Exception("Gagal update status order: $e");
     }
+  }
+
+  @override
+  Future<void> completeOrder(
+    OrderModel order, {
+    required PaymentMethod paymentMethod,
+  }) async {
+    try {
+      final batch = _firestore.batch();
+
+      final orderRef = _firestore.collection(collectionName).doc(order.id);
+
+      final invoiceNumber = "INV-TEST";
+
+      batch.update(orderRef, {
+        'status': OrderStatus.completed.name,
+        'paymentMethod': paymentMethod.name,
+        'paidAt': Timestamp.now(),
+        'invoiceNumber': invoiceNumber,
+      });
+
+      final tableRef = _firestore.collection('tables').doc(order.tableId);
+
+      batch.update(tableRef, {
+        'status': 'available',
+        'activeOrderId': null,
+        'activeGuests': 0,
+      });
+
+      await batch.commit();
+    } catch (e, s) {
+      if (kDebugMode) {
+        debugPrint("COMPLETE ORDER ERROR");
+        debugPrint(e.toString());
+        debugPrintStack(stackTrace: s);
+      }
+      rethrow;
+    }
+  }
+
+  Future<String> _generateInvoiceNumber() async {
+    final docRef = _firestore.collection('system').doc('invoice');
+
+    return _firestore.runTransaction((transaction) async {
+      final snapshot = await transaction.get(docRef);
+
+      int lastNumber = 0;
+
+      if (snapshot.exists) {
+        lastNumber = snapshot.data()?['lastNumber'] ?? 0;
+      }
+
+      lastNumber++;
+
+      transaction.set(
+        docRef,
+        {
+          'lastNumber': lastNumber,
+        },
+        SetOptions(merge: true),
+      );
+
+      final now = DateTime.now();
+
+      final date = "${now.year}"
+          "${now.month.toString().padLeft(2, '0')}"
+          "${now.day.toString().padLeft(2, '0')}";
+
+      final runningNumber = lastNumber.toString().padLeft(4, '0');
+
+      return "INV-$date-$runningNumber";
+    });
   }
 }

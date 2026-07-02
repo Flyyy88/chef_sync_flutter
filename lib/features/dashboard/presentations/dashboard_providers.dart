@@ -24,7 +24,8 @@ class DashboardStats {
   });
 
   int get activeOrdersCount => preparingCount + readyCount;
-  double get occupancyRate => totalTables == 0 ? 0 : occupiedTables / totalTables;
+  double get occupancyRate =>
+      totalTables == 0 ? 0 : occupiedTables / totalTables;
 }
 
 final dashboardStatsProvider = FutureProvider<DashboardStats>((ref) async {
@@ -36,7 +37,8 @@ final dashboardStatsProvider = FutureProvider<DashboardStats>((ref) async {
       .where((o) => o.status == OrderStatus.completed)
       .fold<double>(0, (sum, o) => sum + o.grandTotal);
 
-  final preparing = orders.where((o) => o.status == OrderStatus.preparing).length;
+  final preparing =
+      orders.where((o) => o.status == OrderStatus.preparing).length;
   final ready = orders.where((o) => o.status == OrderStatus.ready).length;
 
   final occupied = tables.where((t) => t.status == TableStatus.occupied).length;

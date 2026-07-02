@@ -88,7 +88,7 @@ class FirebaseAuthRepositoryImpl implements AuthRepository {
     } on AuthException {
       rethrow;
     } catch (e) {
-      throw AuthException(
+      throw const AuthException(
         'Terjadi kesalahan saat login. Coba lagi.',
         code: AuthErrorCode.unknown,
       );
@@ -104,7 +104,7 @@ class FirebaseAuthRepositoryImpl implements AuthRepository {
       await _auth.signOut();
     } catch (e) {
       // Logout jarang gagal, tapi jangan biarkan exception tak tertangani
-      throw AuthException(
+      throw const AuthException(
         'Gagal logout. Coba lagi.',
         code: AuthErrorCode.unknown,
       );

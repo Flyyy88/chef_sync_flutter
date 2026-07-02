@@ -7,13 +7,19 @@ import '../../menu/presentation/menu_providers.dart';
 import '../../menu/domain/models/menu_item.dart';
 import '../../tables/presentation/table_providers.dart';
 import '../../tables/domain/models/table_model.dart';
-import '../../dashboard/presentations/dashboard_providers.dart';
 import 'order_providers.dart';
 import '../domain/models/order_model.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../dashboard/presentations/dashboard_providers.dart';
+import 'package:go_router/go_router.dart';
 
 class PosScreen extends ConsumerStatefulWidget {
-  const PosScreen({super.key});
+  final TableModel? selectedTable;
+
+  const PosScreen({
+    super.key,
+    this.selectedTable,
+  });
 
   @override
   ConsumerState<PosScreen> createState() => _PosScreenState();
@@ -21,6 +27,14 @@ class PosScreen extends ConsumerStatefulWidget {
 
 class _PosScreenState extends ConsumerState<PosScreen> {
   TableModel? _selectedTable;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _selectedTable = widget.selectedTable;
+  }
+
   // menuId -> jumlah di keranjang
   final Map<String, int> _cartQuantities = {};
   bool _isSubmitting = false;
@@ -56,13 +70,18 @@ class _PosScreenState extends ConsumerState<PosScreen> {
   Future<void> _submitOrder(List<MenuItem> allMenus) async {
     if (_selectedTable == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Pilih meja terlebih dahulu')),
+        const SnackBar(
+          content: Text('Pilih meja terlebih dahulu'),
+        ),
       );
       return;
     }
+
     if (_cartQuantities.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Keranjang masih kosong')),
+        const SnackBar(
+          content: Text('Keranjang masih kosong'),
+        ),
       );
       return;
     }
@@ -72,7 +91,11 @@ class _PosScreenState extends ConsumerState<PosScreen> {
     try {
       final items = _cartQuantities.entries.map((e) {
         final menu = allMenus.firstWhere((m) => m.id == e.key);
-        return OrderItem(item: menu, quantity: e.value);
+
+        return OrderItem(
+          item: menu,
+          quantity: e.value,
+        );
       }).toList();
 
       final order = OrderModel(
@@ -83,46 +106,51 @@ class _PosScreenState extends ConsumerState<PosScreen> {
         createdAt: DateTime.now(),
       );
 
-      // 1. Simpan order ke Firestore
+      // Simpan order
       await ref.read(orderRepositoryProvider).saveOrder(order);
 
-      // 2. Update status meja jadi occupied dan tautkan ke order ini
+      // Update status meja
       await ref.read(tableRepositoryProvider).updateTableStatus(
             _selectedTable!.id,
             TableStatus.occupied,
             orderId: order.id,
-            guests: _selectedTable!.activeGuests == 0 ? 1 : _selectedTable!.activeGuests,
+            guests: _selectedTable!.activeGuests == 0
+                ? 1
+                : _selectedTable!.activeGuests,
           );
 
-      // 3. Refresh semua provider terkait supaya Dashboard & Tables Screen
-      //    langsung menampilkan data terbaru tanpa perlu restart app.
+      // Refresh provider
       ref.invalidate(todayOrdersProvider);
       ref.invalidate(tableListProvider);
       ref.invalidate(dashboardStatsProvider);
 
-      if (!mounted) return;
-
-      setState(() {
-        _cartQuantities.clear();
-        _selectedTable = null;
-      });
+      if (!context.mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Order berhasil dibuat!'),
+          content: Text("Order berhasil dibuat"),
           backgroundColor: AppTheme.primaryColor,
+          duration: Duration(seconds: 1),
         ),
       );
+
+      // Kembali ke halaman Tables
+      context.go('/tables');
     } catch (e) {
       if (!mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Gagal membuat order: $e'),
+          content: Text("Gagal membuat order: $e"),
           backgroundColor: AppTheme.errorColor,
         ),
       );
     } finally {
-      if (mounted) setState(() => _isSubmitting = false);
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+      }
     }
   }
 
@@ -137,7 +165,8 @@ class _PosScreenState extends ConsumerState<PosScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         title: const Text('Buat Order Baru',
-            style: TextStyle(color: AppTheme.secondaryColor, fontWeight: FontWeight.bold)),
+            style: TextStyle(
+                color: AppTheme.secondaryColor, fontWeight: FontWeight.bold)),
       ),
       body: tableAsync.when(
         data: (tables) => menuAsync.when(
@@ -168,6 +197,25 @@ class _PosScreenState extends ConsumerState<PosScreen> {
   }
 
   Widget _buildTableSelector(List<TableModel> tables) {
+    if (widget.selectedTable != null) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        color: Colors.white,
+        child: Row(
+          children: [
+            const Icon(Icons.table_restaurant),
+            const SizedBox(width: 10),
+            Text(
+              widget.selectedTable!.label,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
     if (tables.isEmpty) {
       return const Padding(
         padding: EdgeInsets.all(16),
@@ -185,7 +233,10 @@ class _PosScreenState extends ConsumerState<PosScreen> {
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 16),
             child: Text('PILIH MEJA',
-                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12, color: Colors.grey)),
+                style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
+                    color: Colors.grey)),
           ),
           const SizedBox(height: 8),
           SizedBox(
@@ -205,9 +256,12 @@ class _PosScreenState extends ConsumerState<PosScreen> {
                   selected: isSelected,
                   // Meja yang sudah 'occupied' tidak bisa dipakai untuk order BARU
                   // (untuk order tambahan di meja yang sama, akan dibuat fitur terpisah nanti)
-                  onSelected: isOccupied ? null : (_) => setState(() => _selectedTable = table),
+                  onSelected: isOccupied
+                      ? null
+                      : (_) => setState(() => _selectedTable = table),
                   selectedColor: AppTheme.primaryColor,
-                  backgroundColor: isOccupied ? Colors.grey.shade200 : Colors.white,
+                  backgroundColor:
+                      isOccupied ? Colors.grey.shade200 : Colors.white,
                   labelStyle: TextStyle(
                     color: isSelected
                         ? Colors.white
@@ -217,7 +271,9 @@ class _PosScreenState extends ConsumerState<PosScreen> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20),
                     side: BorderSide(
-                      color: isSelected ? AppTheme.primaryColor : Colors.grey.shade300,
+                      color: isSelected
+                          ? AppTheme.primaryColor
+                          : Colors.grey.shade300,
                     ),
                   ),
                 );
@@ -260,7 +316,8 @@ class _PosScreenState extends ConsumerState<PosScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(menu.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+                    Text(menu.name,
+                        style: const TextStyle(fontWeight: FontWeight.w600)),
                     const SizedBox(height: 4),
                     Text(
                       currency.format(menu.price),
@@ -275,7 +332,8 @@ class _PosScreenState extends ConsumerState<PosScreen> {
               if (qty == 0)
                 IconButton(
                   onPressed: () => _incrementItem(menu),
-                  icon: const Icon(Icons.add_circle, color: AppTheme.primaryColor, size: 28),
+                  icon: const Icon(Icons.add_circle,
+                      color: AppTheme.primaryColor, size: 28),
                 )
               else
                 Row(
@@ -285,10 +343,12 @@ class _PosScreenState extends ConsumerState<PosScreen> {
                       icon: const Icon(Icons.remove_circle_outline,
                           color: AppTheme.secondaryColor),
                     ),
-                    Text('$qty', style: const TextStyle(fontWeight: FontWeight.bold)),
+                    Text('$qty',
+                        style: const TextStyle(fontWeight: FontWeight.bold)),
                     IconButton(
                       onPressed: () => _incrementItem(menu),
-                      icon: const Icon(Icons.add_circle, color: AppTheme.primaryColor),
+                      icon: const Icon(Icons.add_circle,
+                          color: AppTheme.primaryColor),
                     ),
                   ],
                 ),
@@ -299,7 +359,8 @@ class _PosScreenState extends ConsumerState<PosScreen> {
     );
   }
 
-  Widget _buildCartBar(String subtotalText, int totalItems, List<MenuItem> menus) {
+  Widget _buildCartBar(
+      String subtotalText, int totalItems, List<MenuItem> menus) {
     return SafeArea(
       top: false,
       child: Container(
@@ -320,8 +381,11 @@ class _PosScreenState extends ConsumerState<PosScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('$totalItems item', style: const TextStyle(fontSize: 12, color: Colors.grey)),
-                  Text(subtotalText, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  Text('$totalItems item',
+                      style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                  Text(subtotalText,
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 16)),
                 ],
               ),
             ),
@@ -334,7 +398,8 @@ class _PosScreenState extends ConsumerState<PosScreen> {
                     ? const SizedBox(
                         height: 20,
                         width: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white),
                       )
                     : const Text('Buat Order'),
               ),

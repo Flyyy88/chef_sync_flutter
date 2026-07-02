@@ -20,6 +20,7 @@
         "google_fonts",
         "intl",
         "riverpod_annotation",
+        "rxdart",
         "shared_preferences",
         "shimmer",
         "uuid"
@@ -113,6 +114,11 @@
         "test_api",
         "vector_math"
       ]
+    },
+    {
+      "name": "rxdart",
+      "version": "0.28.0",
+      "dependencies": []
     },
     {
       "name": "cloud_firestore",

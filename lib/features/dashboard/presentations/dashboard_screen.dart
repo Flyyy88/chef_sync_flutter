@@ -157,7 +157,8 @@ class DashboardScreen extends ConsumerWidget {
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
         itemCount: orders.length,
-        separatorBuilder: (_, __) => Divider(height: 1, color: Colors.grey.shade100),
+        separatorBuilder: (_, __) =>
+            Divider(height: 1, color: Colors.grey.shade100),
         itemBuilder: (context, i) {
           final order = orders[i];
           final isReady = order.status == OrderStatus.ready;
@@ -170,7 +171,8 @@ class DashboardScreen extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('#${order.id.length > 6 ? order.id.substring(0, 6) : order.id}',
+                      Text(
+                          '#${order.id.length > 6 ? order.id.substring(0, 6) : order.id}',
                           style: const TextStyle(
                               fontWeight: FontWeight.bold,
                               color: AppTheme.primaryColor)),
@@ -182,7 +184,8 @@ class DashboardScreen extends ConsumerWidget {
                     ],
                   ),
                 ),
-                _StatusBadge(label: order.status.name.toUpperCase(), isActive: isReady),
+                _StatusBadge(
+                    label: order.status.name.toUpperCase(), isActive: isReady),
               ],
             ),
           );
@@ -193,36 +196,40 @@ class DashboardScreen extends ConsumerWidget {
 
   Widget _buildQuickActions(BuildContext context) {
     return GridView.count(
-      crossAxisCount: 2,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 12,
-      crossAxisSpacing: 12,
-      childAspectRatio: 1.6,
-      children: [
-        _QuickActionButton(
-          label: "New Order",
-          icon: Icons.add_circle_outline,
-          isPrimary: true,
-          onTap: () => context.push('/orders'),
-        ),
-        _QuickActionButton(
-          label: "Settlement",
-          icon: Icons.receipt_long_outlined,
-          onTap: () => _showComingSoon(context, "Settlement"),
-        ),
-        _QuickActionButton(
-          label: "Staff Shift",
-          icon: Icons.groups_outlined,
-          onTap: () => _showComingSoon(context, "Staff Shift"),
-        ),
-        _QuickActionButton(
-          label: "Day End Report",
-          icon: Icons.print_outlined,
-          onTap: () => _showComingSoon(context, "Day End Report"),
-        ),
-      ],
-    );
+        crossAxisCount: 2,
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        mainAxisSpacing: 12,
+        crossAxisSpacing: 12,
+        childAspectRatio: 1.6,
+        children: [
+          _QuickActionButton(
+            label: "New Order",
+            icon: Icons.add_circle_outline,
+            isPrimary: true,
+            onTap: () => context.push('/orders'),
+          ),
+          _QuickActionButton(
+            label: "Kitchen",
+            icon: Icons.soup_kitchen_outlined,
+            onTap: () => context.push('/kitchen'),
+          ),
+          _QuickActionButton(
+            label: "Waiter",
+            icon: Icons.room_service_outlined,
+            onTap: () => context.push('/waiter'),
+          ),
+          _QuickActionButton(
+            label: "Settlement",
+            icon: Icons.receipt_long_outlined,
+            onTap: () => context.push('/cashier'),
+          ),
+          _QuickActionButton(
+            label: "Day Report",
+            icon: Icons.print_outlined,
+            onTap: () => _showComingSoon(context, "Day Report"),
+          ),
+        ]);
   }
 
   void _showComingSoon(BuildContext context, String feature) {
@@ -262,7 +269,10 @@ class _StatCard extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(title,
-                    style: const TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w600)),
+                    style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey,
+                        fontWeight: FontWeight.w600)),
                 Container(
                   padding: const EdgeInsets.all(6),
                   decoration: BoxDecoration(
@@ -274,7 +284,9 @@ class _StatCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
-            Text(value, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+            Text(value,
+                style:
+                    const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
           ],
         ),
       );
@@ -283,7 +295,8 @@ class _StatCard extends StatelessWidget {
 class _ActiveOrdersCard extends StatelessWidget {
   final int preparingCount;
   final int readyCount;
-  const _ActiveOrdersCard({required this.preparingCount, required this.readyCount});
+  const _ActiveOrdersCard(
+      {required this.preparingCount, required this.readyCount});
 
   @override
   Widget build(BuildContext context) {
@@ -305,25 +318,33 @@ class _ActiveOrdersCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text("ACTIVE ORDERS",
-                  style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w600)),
+                  style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey,
+                      fontWeight: FontWeight.w600)),
               Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
                   color: AppTheme.secondaryColor.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(Icons.outdoor_grill_outlined, color: AppTheme.secondaryColor, size: 18),
+                child: const Icon(Icons.outdoor_grill_outlined,
+                    color: AppTheme.secondaryColor, size: 18),
               ),
             ],
           ),
           const SizedBox(height: 8),
-          Text('$total', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+          Text('$total',
+              style:
+                  const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
           const SizedBox(height: 12),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('In Preparation ($preparingCount)', style: const TextStyle(fontSize: 11, color: Colors.grey)),
-              Text('Ready ($readyCount)', style: const TextStyle(fontSize: 11, color: Colors.grey)),
+              Text('In Preparation ($preparingCount)',
+                  style: const TextStyle(fontSize: 11, color: Colors.grey)),
+              Text('Ready ($readyCount)',
+                  style: const TextStyle(fontSize: 11, color: Colors.grey)),
             ],
           ),
           const SizedBox(height: 6),
@@ -333,7 +354,8 @@ class _ActiveOrdersCard extends StatelessWidget {
               value: total == 0 ? 0 : readyRatio,
               minHeight: 8,
               backgroundColor: AppTheme.secondaryColor.withOpacity(0.15),
-              valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+              valueColor:
+                  const AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
             ),
           ),
         ],
@@ -346,7 +368,8 @@ class _OccupancyCard extends StatelessWidget {
   final int occupied;
   final int reserved;
   final int total;
-  const _OccupancyCard({required this.occupied, required this.reserved, required this.total});
+  const _OccupancyCard(
+      {required this.occupied, required this.reserved, required this.total});
 
   @override
   Widget build(BuildContext context) {
@@ -367,24 +390,32 @@ class _OccupancyCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text("TABLE OCCUPANCY",
-                  style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w600)),
+                  style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey,
+                      fontWeight: FontWeight.w600)),
               Container(
                 padding: const EdgeInsets.all(6),
                 decoration: BoxDecoration(
                   color: Colors.amber.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(Icons.table_restaurant_outlined, color: Colors.amber, size: 18),
+                child: const Icon(Icons.table_restaurant_outlined,
+                    color: Colors.amber, size: 18),
               ),
             ],
           ),
           const SizedBox(height: 8),
-          Text('$rate%', style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+          Text('$rate%',
+              style:
+                  const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
           const SizedBox(height: 12),
           Wrap(
             spacing: 8,
             children: [
-              _Pill(text: '$occupied/$total TABLES', color: AppTheme.primaryColor),
+              _Pill(
+                  text: '$occupied/$total TABLES',
+                  color: AppTheme.primaryColor),
               _Pill(text: '$reserved RESERVED', color: AppTheme.errorColor),
             ],
           ),
@@ -408,7 +439,8 @@ class _Pill extends StatelessWidget {
           border: Border.all(color: color.withOpacity(0.3)),
         ),
         child: Text(text,
-            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: color)),
+            style: TextStyle(
+                fontSize: 10, fontWeight: FontWeight.bold, color: color)),
       );
 }
 
@@ -421,17 +453,22 @@ class _StatusBadge extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
-          color: isActive ? AppTheme.primaryColor.withOpacity(0.1) : Colors.grey.shade100,
+          color: isActive
+              ? AppTheme.primaryColor.withOpacity(0.1)
+              : Colors.grey.shade100,
           borderRadius: BorderRadius.circular(6),
           border: Border.all(
-            color: isActive ? AppTheme.primaryColor.withOpacity(0.3) : Colors.grey.shade300,
+            color: isActive
+                ? AppTheme.primaryColor.withOpacity(0.3)
+                : Colors.grey.shade300,
           ),
         ),
         child: Text(label,
             style: TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.bold,
-                color: isActive ? AppTheme.primaryColor : Colors.grey.shade600)),
+                color:
+                    isActive ? AppTheme.primaryColor : Colors.grey.shade600)),
       );
 }
 
@@ -457,19 +494,23 @@ class _QuickActionButton extends StatelessWidget {
           child: Container(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
-              border: isPrimary ? null : Border.all(color: Colors.grey.shade200),
+              border:
+                  isPrimary ? null : Border.all(color: Colors.grey.shade200),
             ),
             alignment: Alignment.center,
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(icon, color: isPrimary ? Colors.white : AppTheme.primaryColor),
+                Icon(icon,
+                    color: isPrimary ? Colors.white : AppTheme.primaryColor),
                 const SizedBox(height: 8),
                 Text(label,
                     style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
-                        color: isPrimary ? Colors.white : AppTheme.secondaryColor)),
+                        color: isPrimary
+                            ? Colors.white
+                            : AppTheme.secondaryColor)),
               ],
             ),
           ),
