@@ -29,9 +29,12 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserModel?>> {
 
   Future<void> login(String email, String password) async {
     state = const AsyncValue.loading();
-    state = await AsyncValue.guard(
-      () => _repository.login(email, password),
-    );
+
+    state = await AsyncValue.guard(() async {
+      final user = await _repository.login(email, password);
+
+      return user;
+    });
   }
 
   Future<void> logout() async {

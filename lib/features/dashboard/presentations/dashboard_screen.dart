@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../orders/domain/models/order_model.dart';
 import '../../../core/theme/app_theme.dart';
 import 'dashboard_providers.dart';
+import '../../authentication/presentation/auth_providers.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -15,7 +16,7 @@ class DashboardScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: AppTheme.backgroundColorLight,
-      appBar: _buildAppBar(),
+      appBar: _buildAppBar(ref),
       body: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(dashboardStatsProvider);
@@ -56,7 +57,7 @@ class DashboardScreen extends ConsumerWidget {
     );
   }
 
-  AppBar _buildAppBar() => AppBar(
+  AppBar _buildAppBar(WidgetRef ref) => AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
         title: const Text("Emerald Bistro",
@@ -65,12 +66,98 @@ class DashboardScreen extends ConsumerWidget {
         actions: [
           IconButton(
             onPressed: () {},
-            icon: const Icon(Icons.notifications_outlined,
-                color: AppTheme.secondaryColor),
+            icon: const Icon(
+              Icons.notifications_outlined,
+              color: AppTheme.secondaryColor,
+            ),
           ),
-          const Padding(
-            padding: EdgeInsets.only(right: 12.0),
-            child: CircleAvatar(backgroundColor: Color(0xFFE5E7EB)),
+          Consumer(
+            builder: (context, ref, _) {
+              final userAsync = ref.watch(currentUserPrvdr);
+
+              return userAsync.when(
+                data: (user) {
+                  if (user == null) {
+                    return const SizedBox();
+                  }
+
+                  return PopupMenuButton<String>(
+                    offset: const Offset(0, 50),
+                    child: Padding(
+                      padding: const EdgeInsets.only(right: 16),
+                      child: Row(
+                        children: [
+                          const CircleAvatar(
+                            radius: 18,
+                            backgroundColor: Color(0xFFE5E7EB),
+                            child: Icon(Icons.person),
+                          ),
+                          const SizedBox(width: 8),
+                          Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                user.name,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                ),
+                              ),
+                              Text(
+                                user.role.name.toUpperCase(),
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    itemBuilder: (context) => [
+                      PopupMenuItem(
+                        enabled: false,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              user.name,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Text(
+                              user.email,
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const PopupMenuDivider(),
+                      const PopupMenuItem(
+                        value: "logout",
+                        child: Row(
+                          children: [
+                            Icon(Icons.logout),
+                            SizedBox(width: 10),
+                            Text("Logout"),
+                          ],
+                        ),
+                      ),
+                    ],
+                    onSelected: (value) async {
+                      if (value == "logout") {
+                        await ref.read(authNotifierPrvdr.notifier).logout();
+                      }
+                    },
+                  );
+                },
+                loading: () => const SizedBox(),
+                error: (_, __) => const SizedBox(),
+              );
+            },
           ),
         ],
       );

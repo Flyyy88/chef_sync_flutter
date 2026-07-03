@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/widgets/enterprise_app_bar.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../orders/domain/models/order_model.dart';
@@ -8,6 +9,7 @@ import 'waiter_providers.dart';
 import 'widgets/waiter_empty_state.dart';
 import 'widgets/waiter_order_card.dart';
 import '../../dashboard/presentations/dashboard_providers.dart';
+import '../../authentication/presentation/auth_providers.dart';
 
 class WaiterScreen extends ConsumerWidget {
   const WaiterScreen({super.key});
@@ -15,10 +17,16 @@ class WaiterScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final readyOrders = ref.watch(readyOrdersProvider);
+    final currentUser = ref.watch(currentUserPrvdr);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Waiter"),
+      appBar: EnterpriseAppBar(
+        title: "Waiter",
+        userName: currentUser.value?.name ?? "Loading...",
+        role: currentUser.value?.role.name ?? "",
+        onLogout: () async {
+          await ref.read(authNotifierPrvdr.notifier).logout();
+        },
       ),
       body: readyOrders.isEmpty
           ? const WaiterEmptyState()

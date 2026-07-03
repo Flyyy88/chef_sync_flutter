@@ -75,11 +75,27 @@ class MockOrderRepositoryImpl implements OrderRepository {
   ) async {
     final idx = _orders.indexWhere((e) => e.id == orderId);
 
-    if (idx != -1) {
-      _orders[idx] = _orders[idx].copyWith(status: status);
+    if (idx == -1) return;
 
-      _controller.add(List.from(_orders));
+    final order = _orders[idx];
+
+    if (status == OrderStatus.preparing) {
+      _orders[idx] = order.copyWith(
+        status: status,
+        cookingStartedAt: DateTime.now(),
+      );
+    } else if (status == OrderStatus.ready) {
+      _orders[idx] = order.copyWith(
+        status: status,
+        readyAt: DateTime.now(),
+      );
+    } else {
+      _orders[idx] = order.copyWith(
+        status: status,
+      );
     }
+
+    _controller.add(List.from(_orders));
   }
 
   @override
@@ -231,12 +247,24 @@ class FirestoreOrderRepositoryImpl implements OrderRepository {
   }
 
   @override
-  Future<void> updateOrderStatus(String orderId, OrderStatus status) async {
+  Future<void> updateOrderStatus(
+    String orderId,
+    OrderStatus status,
+  ) async {
     try {
-      await _firestore
-          .collection(collectionName)
-          .doc(orderId)
-          .update({'status': status.name});
+      final data = <String, dynamic>{
+        'status': status.name,
+      };
+
+      if (status == OrderStatus.preparing) {
+        data['cookingStartedAt'] = Timestamp.now();
+      }
+
+      if (status == OrderStatus.ready) {
+        data['readyAt'] = Timestamp.now();
+      }
+
+      await _firestore.collection(collectionName).doc(orderId).update(data);
     } catch (e) {
       throw Exception("Gagal update status order: $e");
     }

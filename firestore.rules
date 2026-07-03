@@ -133,7 +133,8 @@ service cloud.firestore {
     // --------------------------------------------------------
     match /orders/{orderId} {
       // Admin & manager: akses penuh
-      allow read, write: if isAdminOrManager();
+      allow read: if true;
+allow write: if isAdminOrManager();
 
       // Cashier: baca semua order, update status untuk proses billing
       allow read: if isCashier();
@@ -172,18 +173,19 @@ service cloud.firestore {
     // --------------------------------------------------------
     match /tables/{tableId} {
       // Admin & manager: akses penuh
-      allow read, write: if isAdminOrManager();
+      allow read: if true;
+allow write: if isAdminOrManager();
 
       // Cashier: baca semua, update status meja
       allow read: if isCashier();
       allow update: if isCashier()
-  && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-      'status',
-      'paymentMethod',
-      'paidAt',
-      'invoiceNumber'
-  ])
-  && isValidOrderStatus(request.resource.data.status);
+&& request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+    'status',
+    'paymentMethod',
+    'paidAt',
+    'invoiceNumber'
+])
+&& isValidTableStatus(request.resource.data.status);
 
       // Waiter: baca semua, update status meja
       allow read: if isWaiter();
@@ -238,21 +240,11 @@ service cloud.firestore {
     // (Firestore default sudah deny, ini eksplisit untuk kejelasan)
     // --------------------------------------------------------
     match /system/{docId} {
-  allow read, write: if isAdminOrManager();
-}
+      allow read, write: if isCashier() || isAdminOrManager();
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
   }
-// --------------------------------------------------------
-// COLLECTION: system
-// Digunakan untuk invoice counter
-// --------------------------------------------------------
-match /system/{docId} {
-
-  allow read: if isCashier() || isAdminOrManager();
-
-  allow write: if isCashier() || isAdminOrManager();
-
-}
 }

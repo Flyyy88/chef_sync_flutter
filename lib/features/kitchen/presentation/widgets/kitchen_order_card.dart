@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 import '../../../orders/domain/models/order_model.dart';
 import '../../../../core/theme/app_theme.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../providers/realtime_clock_provider.dart';
 
-class KitchenOrderCard extends StatelessWidget {
+class KitchenOrderCard extends ConsumerWidget {
   final OrderModel order;
   final VoidCallback? onAction;
 
@@ -15,15 +17,46 @@ class KitchenOrderCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final isPending = order.status == OrderStatus.pending;
     final isPreparing = order.status == OrderStatus.preparing;
 
-    final duration = DateTime.now().difference(order.createdAt);
+    final now = ref.watch(realtimeClockProvider).value ?? DateTime.now();
 
-    final elapsed = "${duration.inHours.toString().padLeft(2, '0')}:"
-        "${(duration.inMinutes % 60).toString().padLeft(2, '0')}";
+    Duration? duration;
+    String elapsed = "Waiting Chef";
+    Color timerColor = Colors.grey;
 
+// Preparing → timer berjalan
+    if (order.status == OrderStatus.preparing &&
+        order.cookingStartedAt != null) {
+      duration = now.difference(order.cookingStartedAt!);
+    }
+
+// Ready → timer berhenti
+    else if (order.status == OrderStatus.ready &&
+        order.cookingStartedAt != null &&
+        order.readyAt != null) {
+      duration = order.readyAt!.difference(order.cookingStartedAt!);
+    }
+
+    if (duration != null) {
+      final hours = duration.inHours;
+      final minutes = duration.inMinutes % 60;
+      final seconds = duration.inSeconds % 60;
+
+      elapsed = "${hours.toString().padLeft(2, '0')}:"
+          "${minutes.toString().padLeft(2, '0')}:"
+          "${seconds.toString().padLeft(2, '0')}";
+
+      if (duration.inMinutes >= 10) {
+        timerColor = Colors.red;
+      } else if (duration.inMinutes >= 5) {
+        timerColor = Colors.orange;
+      } else {
+        timerColor = Colors.green;
+      }
+    }
     final formatter = DateFormat('HH:mm');
 
     return Container(
@@ -92,7 +125,9 @@ class KitchenOrderCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                "Created : ${formatter.format(order.createdAt)}",
+                order.status == OrderStatus.pending
+                    ? "Created : ${formatter.format(order.createdAt)}"
+                    : "Started : ${formatter.format(order.cookingStartedAt ?? order.createdAt)}",
                 style: TextStyle(
                   color: Colors.grey.shade600,
                 ),
@@ -103,13 +138,13 @@ class KitchenOrderCard extends StatelessWidget {
                   vertical: 4,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.red.withOpacity(.08),
+                  color: timerColor.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
                   elapsed,
-                  style: const TextStyle(
-                    color: Colors.red,
+                  style: TextStyle(
+                    color: timerColor,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -198,7 +233,7 @@ class _StatusBadge extends StatelessWidget {
         vertical: 5,
       ),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(

@@ -40,6 +40,7 @@ class OrderItem {
 
   factory OrderItem.fromJson(Map<String, dynamic> json) {
     final menuJson = json['menuItem'] as Map<String, dynamic>;
+
     return OrderItem(
       item: MenuItem.fromJson(menuJson, menuJson['id'] ?? ''),
       quantity: json['quantity'] ?? 1,
@@ -57,6 +58,8 @@ class OrderModel {
   final double serviceCharge;
   final String? generalNotes;
   final DateTime createdAt;
+  final DateTime? cookingStartedAt;
+  final DateTime? readyAt;
   final String? invoiceNumber;
   final PaymentMethod? paymentMethod;
   final DateTime? paidAt;
@@ -70,6 +73,8 @@ class OrderModel {
     this.serviceCharge = 0.05, // 5% Service Charge
     this.generalNotes,
     required this.createdAt,
+    this.cookingStartedAt,
+    this.readyAt,
     this.invoiceNumber,
     this.paymentMethod,
     this.paidAt,
@@ -95,6 +100,10 @@ class OrderModel {
         'invoiceNumber': invoiceNumber,
         'paymentMethod': paymentMethod?.name,
         'paidAt': paidAt == null ? null : Timestamp.fromDate(paidAt!),
+        'cookingStartedAt': cookingStartedAt == null
+            ? null
+            : Timestamp.fromDate(cookingStartedAt!),
+        'readyAt': readyAt == null ? null : Timestamp.fromDate(readyAt!),
       };
 
   factory OrderModel.fromJson(Map<String, dynamic> json, String id) {
@@ -112,6 +121,8 @@ class OrderModel {
       serviceCharge: (json['serviceCharge'] ?? 0.05).toDouble(),
       generalNotes: json['generalNotes'],
       createdAt: (json['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      cookingStartedAt: (json['cookingStartedAt'] as Timestamp?)?.toDate(),
+      readyAt: (json['readyAt'] as Timestamp?)?.toDate(),
       invoiceNumber: json['invoiceNumber'],
       paymentMethod: json['paymentMethod'] == null
           ? null
@@ -129,6 +140,8 @@ class OrderModel {
     String? invoiceNumber,
     PaymentMethod? paymentMethod,
     DateTime? paidAt,
+    DateTime? cookingStartedAt,
+    DateTime? readyAt,
   }) {
     return OrderModel(
       id: id,
@@ -142,6 +155,8 @@ class OrderModel {
       invoiceNumber: invoiceNumber ?? this.invoiceNumber,
       paymentMethod: paymentMethod ?? this.paymentMethod,
       paidAt: paidAt ?? this.paidAt,
+      cookingStartedAt: cookingStartedAt ?? this.cookingStartedAt,
+      readyAt: readyAt ?? this.readyAt,
     );
   }
 }
