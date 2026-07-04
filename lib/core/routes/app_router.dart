@@ -13,8 +13,11 @@ import '../../features/waiter/presentation/waiter_screen.dart';
 import '../../features/cashier/presentation/cashier_screen.dart';
 import '../../features/receipt/presentation/receipt_screen.dart';
 import '../../features/orders/domain/models/order_model.dart';
-import '../../features/tables/presentation/table_screen.dart';
 import '../../features/tables/domain/models/table_model.dart';
+import '../../features/restaurant/presentation/restaurant_screen.dart';
+import '../../features/inventory/presentation/inventory_screen.dart';
+import '../../features/menu/presentation/menu_screen.dart';
+import '../../features/menu/domain/models/menu_item.dart';
 
 // ============================================================
 // Rute yang diizinkan per role
@@ -33,7 +36,7 @@ const _allowedRoutes = {
   UserRole.admin: {
     '/dashboard',
     '/orders',
-    '/tables',
+    '/restaurant',
     '/inventory',
     '/menu',
     '/add-menu',
@@ -45,7 +48,7 @@ const _allowedRoutes = {
   UserRole.manager: {
     '/dashboard',
     '/orders',
-    '/tables',
+    '/restaurant',
     '/inventory',
     '/menu',
     '/add-menu',
@@ -54,8 +57,8 @@ const _allowedRoutes = {
     '/cashier',
     '/receipt'
   },
-  UserRole.cashier: {'/dashboard', '/cashier', '/tables', '/receipt'},
-  UserRole.waiter: {'/orders', '/tables', '/waiter'},
+  UserRole.cashier: {'/dashboard', '/cashier', '/restaurant', '/receipt'},
+  UserRole.waiter: {'/orders', '/restaurant', '/waiter'},
   UserRole.kitchen: {'/kitchen'},
 };
 
@@ -119,7 +122,10 @@ final appRouterPrvdr = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/add-menu',
-        builder: (context, state) => const AddMenuScreen(),
+        builder: (context, state) {
+          final item = state.extra as MenuItem?;
+          return AddMenuScreen(initialItem: item);
+        },
       ),
       GoRoute(
         path: '/kitchen',
@@ -143,6 +149,16 @@ final appRouterPrvdr = Provider<GoRouter>((ref) {
           );
         },
       ),
+      GoRoute(
+        path: '/orders',
+        builder: (context, state) {
+          final table = state.extra as TableModel?;
+
+          return PosScreen(
+            selectedTable: table,
+          );
+        },
+      ),
 
       // -------------------------------------------------------
       // Routes DENGAN bottom nav (StatefulShellRoute)
@@ -159,36 +175,20 @@ final appRouterPrvdr = Provider<GoRouter>((ref) {
           ]),
           StatefulShellBranch(routes: [
             GoRoute(
-              path: '/orders',
-              builder: (context, state) {
-                final table = state.extra as TableModel?;
-
-                return PosScreen(
-                  selectedTable: table,
-                );
-              },
-            ),
-          ]),
-          StatefulShellBranch(routes: [
-            GoRoute(
-              path: '/tables',
-              builder: (context, state) => const TableScreen(),
+              path: '/restaurant',
+              builder: (context, state) => const RestaurantScreen(),
             ),
           ]),
           StatefulShellBranch(routes: [
             GoRoute(
               path: '/inventory',
-              builder: (context, state) => const Scaffold(
-                body: Center(child: Text('Inventory Screen')),
-              ),
+              builder: (context, state) => const InventoryScreen(),
             ),
           ]),
           StatefulShellBranch(routes: [
             GoRoute(
               path: '/menu',
-              builder: (context, state) => const Scaffold(
-                body: Center(child: Text('Menu List Screen')),
-              ),
+              builder: (context, state) => const MenuScreen(),
             ),
           ]),
         ],

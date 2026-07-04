@@ -136,6 +136,7 @@ class CashierOrderCard extends StatelessWidget {
               onPressed: () async {
                 final method = await showModalBottomSheet<PaymentMethod>(
                   context: context,
+                  isScrollControlled: true,
                   shape: const RoundedRectangleBorder(
                     borderRadius: BorderRadius.vertical(
                       top: Radius.circular(20),
@@ -165,51 +166,64 @@ class _PaymentMethodSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // No fixed dialog height: the sheet is capped at 90% of the screen
+    // height and 480 wide (so it stays a comfortable dialog size on
+    // tablets), and only the *content* inside scrolls if it doesn't fit —
+    // the sheet itself (and the screen behind it) never scrolls.
     return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              "Payment Method",
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-              ),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxWidth: 480,
+            maxHeight: MediaQuery.of(context).size.height * 0.9,
+          ),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text(
+                  "Payment Method",
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                _buildTile(
+                  context,
+                  Icons.payments,
+                  "Cash",
+                  PaymentMethod.cash,
+                ),
+                _buildTile(
+                  context,
+                  Icons.qr_code,
+                  "QRIS",
+                  PaymentMethod.qris,
+                ),
+                _buildTile(
+                  context,
+                  Icons.credit_card,
+                  "Debit Card",
+                  PaymentMethod.debitCard,
+                ),
+                _buildTile(
+                  context,
+                  Icons.credit_card,
+                  "Credit Card",
+                  PaymentMethod.creditCard,
+                ),
+                _buildTile(
+                  context,
+                  Icons.account_balance_wallet,
+                  "E-Wallet",
+                  PaymentMethod.eWallet,
+                ),
+              ],
             ),
-            const SizedBox(height: 20),
-            _buildTile(
-              context,
-              Icons.payments,
-              "Cash",
-              PaymentMethod.cash,
-            ),
-            _buildTile(
-              context,
-              Icons.qr_code,
-              "QRIS",
-              PaymentMethod.qris,
-            ),
-            _buildTile(
-              context,
-              Icons.credit_card,
-              "Debit Card",
-              PaymentMethod.debitCard,
-            ),
-            _buildTile(
-              context,
-              Icons.credit_card,
-              "Credit Card",
-              PaymentMethod.creditCard,
-            ),
-            _buildTile(
-              context,
-              Icons.account_balance_wallet,
-              "E-Wallet",
-              PaymentMethod.eWallet,
-            ),
-          ],
+          ),
         ),
       ),
     );

@@ -7,6 +7,8 @@ import '../../orders/presentation/order_providers.dart';
 import 'widgets/kitchen_empty_state.dart';
 import 'widgets/kitchen_section.dart';
 import '../../dashboard/presentations/dashboard_providers.dart';
+import '../../authentication/presentation/auth_providers.dart';
+import '../../../core/widgets/enterprise_app_bar.dart';
 
 class KitchenScreen extends ConsumerWidget {
   const KitchenScreen({super.key});
@@ -16,8 +18,13 @@ class KitchenScreen extends ConsumerWidget {
     final ordersAsync = ref.watch(todayOrdersStreamProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Kitchen Display"),
+      appBar: EnterpriseAppBar(
+        title: "Kitchen",
+        userName: "Kitchen",
+        role: "Kitchen",
+        onLogout: () async {
+          await ref.read(authNotifierPrvdr.notifier).logout();
+        },
       ),
       body: ordersAsync.when(
         loading: () => const Center(

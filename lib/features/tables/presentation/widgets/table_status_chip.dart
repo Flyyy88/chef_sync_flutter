@@ -2,6 +2,34 @@ import 'package:flutter/material.dart';
 
 import '../../domain/models/table_model.dart';
 
+extension TableStatusExtension on TableStatus {
+  Color get color {
+    switch (this) {
+      case TableStatus.available:
+        return const Color(0xFF2E7D32);
+      case TableStatus.occupied:
+        return const Color(0xFFC62828);
+      case TableStatus.reserved:
+        return const Color(0xFF1565C0);
+      case TableStatus.cleaning:
+        return const Color(0xFFEF6C00);
+    }
+  }
+
+  String get label {
+    switch (this) {
+      case TableStatus.available:
+        return "Available";
+      case TableStatus.occupied:
+        return "Occupied";
+      case TableStatus.reserved:
+        return "Reserved";
+      case TableStatus.cleaning:
+        return "Cleaning";
+    }
+  }
+}
+
 class TableStatusChip extends StatelessWidget {
   final TableStatus status;
 
@@ -10,54 +38,26 @@ class TableStatusChip extends StatelessWidget {
     required this.status,
   });
 
-  Color get color {
-    switch (status) {
-      case TableStatus.available:
-        return Colors.green;
-
-      case TableStatus.occupied:
-        return Colors.orange;
-
-      case TableStatus.reserved:
-        return Colors.blue;
-
-      case TableStatus.cleaning:
-        return Colors.red;
-    }
-  }
-
-  String get label {
-    switch (status) {
-      case TableStatus.available:
-        return "Available";
-
-      case TableStatus.occupied:
-        return "Occupied";
-
-      case TableStatus.reserved:
-        return "Reserved";
-
-      case TableStatus.cleaning:
-        return "Cleaning";
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
+    final statusColor = status.color;
+    final statusLabel = status.label;
+
     return Container(
       padding: const EdgeInsets.symmetric(
         horizontal: 10,
         vertical: 6,
       ),
       decoration: BoxDecoration(
-        color: color.withOpacity(.12),
+        color: statusColor.withOpacity(.12),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
-        label,
+        statusLabel,
         style: TextStyle(
-          color: color,
+          color: statusColor,
           fontWeight: FontWeight.bold,
+          fontSize: 12,
         ),
       ),
     );

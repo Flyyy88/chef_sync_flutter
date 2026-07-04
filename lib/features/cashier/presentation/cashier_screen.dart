@@ -10,6 +10,8 @@ import '../../tables/presentation/table_providers.dart';
 import 'cashier_providers.dart';
 import 'widgets/cashier_empty_state.dart';
 import 'widgets/cashier_order_card.dart';
+import '../../../core/widgets/enterprise_app_bar.dart';
+import '../../authentication/presentation/auth_providers.dart';
 
 class CashierScreen extends ConsumerWidget {
   const CashierScreen({super.key});
@@ -17,10 +19,16 @@ class CashierScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final servedOrders = ref.watch(servedOrdersProvider);
+    final currentUser = ref.watch(currentUserPrvdr).valueOrNull;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Settlement"),
+      appBar: EnterpriseAppBar(
+        title: "Cashier",
+        userName: currentUser?.name ?? "Cashier",
+        role: currentUser?.role.name ?? "cashier",
+        onLogout: () async {
+          await ref.read(authNotifierPrvdr.notifier).logout();
+        },
       ),
       body: servedOrders.isEmpty
           ? const CashierEmptyState()

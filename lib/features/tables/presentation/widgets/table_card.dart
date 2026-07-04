@@ -16,6 +16,8 @@ class TableCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final statusColor = table.status.color;
+
     return InkWell(
       borderRadius: BorderRadius.circular(18),
       onTap: onTap,
@@ -38,74 +40,101 @@ class TableCard extends StatelessWidget {
           color: Colors.white,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
-            color: Colors.grey.shade200,
+            color: statusColor.withOpacity(0.2),
+            width: 1.5,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(.03),
-              blurRadius: 12,
+              color: statusColor.withOpacity(0.04),
+              blurRadius: 10,
               offset: const Offset(0, 4),
+            ),
+            BoxShadow(
+              color: Colors.black.withOpacity(0.02),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
             ),
           ],
         ),
         child: Padding(
-          padding: const EdgeInsets.all(18),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(
-                Icons.table_restaurant,
-                size: 34,
-                color: Color(0xff004AC6),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: statusColor.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      Icons.table_restaurant_rounded,
+                      size: 22,
+                      color: statusColor,
+                    ),
+                  ),
+                  TableStatusChip(status: table.status),
+                ],
               ),
               const Spacer(),
               Text(
                 table.label,
                 style: const TextStyle(
-                  fontSize: 20,
+                  fontSize: 16,
                   fontWeight: FontWeight.bold,
+                  letterSpacing: -0.3,
+                  color: Colors.black87,
                 ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-              const SizedBox(height: 8),
-              TableStatusChip(
-                status: table.status,
-              ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 10),
               Row(
                 children: [
-                  const Icon(
-                    Icons.event_seat,
-                    size: 18,
-                    color: Colors.grey,
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    "${table.seatingCapacity} Seats",
-                    style: const TextStyle(
-                      color: Colors.grey,
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.event_seat_rounded,
+                          size: 15,
+                          color: Colors.grey.shade600,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          "${table.seatingCapacity} Seats",
+                          style: TextStyle(
+                            color: Colors.grey.shade700,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
+                  if (table.activeGuests > 0)
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.people_alt_rounded,
+                          size: 15,
+                          color: Colors.grey.shade600,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          "${table.activeGuests} Guests",
+                          style: TextStyle(
+                            color: Colors.grey.shade700,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
                 ],
               ),
-              if (table.activeGuests > 0) ...[
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.people,
-                      size: 18,
-                      color: Colors.grey,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      "${table.activeGuests} Guests",
-                      style: const TextStyle(
-                        color: Colors.grey,
-                      ),
-                    ),
-                  ],
-                ),
-              ]
             ],
           ),
         ),
